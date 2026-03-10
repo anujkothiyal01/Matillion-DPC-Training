@@ -1,0 +1,133 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Data Source (Google Sheets)"
+      parameters:
+        componentName: "Start"
+    Data Source (Google Sheets):
+      type: "modular-google-sheets-input-v0"
+      transitions:
+        success:
+        - "Load Staging"
+      parameters:
+        componentName: "Data Source (Google Sheets)"
+        componentId: "modular-google-sheets-input-v0"
+        inputId: "google-sheets-input-v0"
+        google-sheets-input-v0:
+          connection:
+            authType: "OAUTH_USER_TOKENS"
+            secretReferenceId: "dbt_auth_google"
+          connectionOptions:
+          spreadsheetName: "customers - 15pJIg8IBqYYMHuR3UadkoUfplRAzeO_-kWDISEWaDCM"
+          containsHeaderRow: "Yes"
+          mode: "BASIC"
+          cellRange:
+          dataSource: "customers_Sheet1"
+          dataSelection:
+          - "c_id"
+          - "name"
+          - "age"
+          - "dept_id"
+          - "updated_at"
+          dataSourceFilter:
+          combineFilters: "AND"
+          limit:
+          autoDebug: "No"
+        outputId: "snowflake-output-connector-v0"
+        snowflake-output-connector-v0:
+          warehouse: "[Environment Default]"
+          database: "[Environment Default]"
+          schema: "[Environment Default]"
+          tableName: "landing"
+          createTableMode: "REPLACE_IF_EXISTS"
+          primaryKeys:
+          cleanStagedFiles: "Yes"
+          stagePlatform: "SNOWFLAKE"
+          trimStringColumns: "No"
+          stringNullIsNull: "No"
+          snowflake#internalStageType: "USER"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Load Staging:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "Check Duplicates"
+      parameters:
+        componentName: "Load Staging"
+        transformationJob: "Assignment_3/load_staging.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Check Duplicates:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "Load Main"
+        failure:
+        - "Found Duplicates"
+      parameters:
+        componentName: "Check Duplicates"
+        transformationJob: "Assignment_3/check_duplicates.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Load Main:
+      type: "run-transformation"
+      parameters:
+        componentName: "Load Main"
+        transformationJob: "load_main.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Found Duplicates:
+      type: "end-failure"
+      parameters:
+        componentName: "Found Duplicates"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Start:
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    Data Source (Google Sheets):
+      position:
+        x: 160
+        "y": 0
+      tempMetlId: 2
+    Load Staging:
+      position:
+        x: 320
+        "y": 0
+      tempMetlId: 3
+    Check Duplicates:
+      position:
+        x: 480
+        "y": 0
+      tempMetlId: 4
+    Load Main:
+      position:
+        x: 640
+        "y": -80
+      tempMetlId: 7
+    Found Duplicates:
+      position:
+        x: 640
+        "y": 40
+      tempMetlId: 6

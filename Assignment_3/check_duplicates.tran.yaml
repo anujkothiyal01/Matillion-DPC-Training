@@ -1,0 +1,38 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Table Input:
+      type: "table-input"
+      parameters:
+        componentName: "Table Input"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "staging"
+        columnNames:
+        - "c_id"
+        - "name"
+        - "age"
+        - "dept_id"
+        - "updated_at"
+        timeOffset:
+    SQL:
+      type: "sql"
+      sources:
+      - "Table Input"
+      parameters:
+        componentName: "SQL"
+        query: "SELECT \"c_id\", COUNT(*) AS duplicate\r\nFROM \"MATILLION_DPC\".\"\
+          PUBLIC\".\"staging\"\r\nGROUP BY \"c_id\"\r\nHAVING COUNT(*) > 1"
+design:
+  components:
+    Table Input:
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    SQL:
+      position:
+        x: 160
+        "y": 0
+      tempMetlId: 2

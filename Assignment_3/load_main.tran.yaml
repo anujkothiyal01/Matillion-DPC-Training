@@ -1,0 +1,44 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Table Input:
+      type: "table-input"
+      parameters:
+        componentName: "Table Input"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "staging"
+        columnNames:
+        - "c_id"
+        - "name"
+        - "age"
+        - "dept_id"
+        - "updated_at"
+        timeOffset:
+    Rewrite Table:
+      type: "rewrite-table"
+      sources:
+      - "Table Input"
+      parameters:
+        componentName: "Rewrite Table"
+        warehouse: "[Environment Default]"
+        database: "[Environment Default]"
+        schema: "[Environment Default]"
+        targetTable: "main"
+        orderBy:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Table Input:
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    Rewrite Table:
+      position:
+        x: 160
+        "y": 0
+      tempMetlId: 2

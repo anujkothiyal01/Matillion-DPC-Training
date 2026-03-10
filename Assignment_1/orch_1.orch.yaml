@@ -1,0 +1,120 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Source Data (API)"
+      parameters:
+        componentName: "Start"
+    Source Data (API):
+      type: "modular-api-extract-input-v2"
+      transitions:
+        success:
+        - "API Flatten"
+      parameters:
+        componentName: "Source Data (API)"
+        componentId: "custom_v2-179bb06e-f557-4a2d-8c4c-0ae47f79a0b3"
+        inputId: "api-extract-input-v2"
+        api-extract-input-v2:
+          profile: "custom-179bb06e-f557-4a2d-8c4c-0ae47f79a0b3"
+          endpoint: "User Endpoint"
+          connectionRef:
+            overrides:
+              authType: "NONE"
+          uriParams:
+          queryParams:
+          headerParams:
+          postBody:
+          pageLimit:
+          logLevel: "ERROR"
+          loadSelectedData: "No"
+        outputId: "snowflake-output-connector-v0"
+        snowflake-output-connector-v0:
+          warehouse: "COMPUTE_WH"
+          database: "[Environment Default]"
+          schema: "[Environment Default]"
+          tableName: "LAND_USER_DEMO"
+          createTableMode: "REPLACE_IF_EXISTS"
+          cleanStagedFiles: "Yes"
+          stagePlatform: "SNOWFLAKE"
+          snowflake#internalStageType: "USER"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    API Flatten:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "Update Main Table"
+      parameters:
+        componentName: "API Flatten"
+        transformationJob: "Assignment_1/API FLATTEN.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Update Main Table:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "End Success"
+        failure:
+        - "End Failure"
+      parameters:
+        componentName: "Update Main Table"
+        transformationJob: "Assignment_1/API_UPDATE.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    End Success:
+      type: "end-success"
+      parameters:
+        componentName: "End Success"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    End Failure:
+      type: "end-failure"
+      parameters:
+        componentName: "End Failure"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Start:
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    Source Data (API):
+      position:
+        x: 110
+        "y": 0
+      tempMetlId: 4
+    API Flatten:
+      position:
+        x: 250
+        "y": 0
+      tempMetlId: 5
+    Update Main Table:
+      position:
+        x: 390
+        "y": 0
+      tempMetlId: 6
+    End Success:
+      position:
+        x: 530
+        "y": -50
+      tempMetlId: 7
+    End Failure:
+      position:
+        x: 530
+        "y": 60
+      tempMetlId: 8
