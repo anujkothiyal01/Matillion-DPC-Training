@@ -1,0 +1,148 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Data Source"
+      parameters:
+        componentName: "Start"
+    Data Source:
+      type: "modular-google-sheets-input-v0"
+      transitions:
+        success:
+        - "Incremental Load"
+      parameters:
+        componentName: "Data Source"
+        componentId: "modular-google-sheets-input-v0"
+        inputId: "google-sheets-input-v0"
+        google-sheets-input-v0:
+          connection:
+            authType: "OAUTH_USER_TOKENS"
+            secretReferenceId: "dpc-auth-google"
+          connectionOptions:
+          spreadsheetName: "customers_SCD - 1xWi4Jf0_SGiFBp4EvRlVrMa1CY6k0SeQ6-V7apl7XfY"
+          containsHeaderRow: "Yes"
+          mode: "BASIC"
+          cellRange:
+          dataSource: "customers_SCD_Sheet1"
+          dataSelection:
+          - "c_id"
+          - "name"
+          - "email"
+          - "city"
+          - "updated_at"
+          dataSourceFilter:
+          combineFilters: "AND"
+          limit:
+          autoDebug: "No"
+        outputId: "snowflake-output-connector-v0"
+        snowflake-output-connector-v0:
+          warehouse: "[Environment Default]"
+          database: "SCD_TYPE_1"
+          schema: "bronze"
+          tableName: "customers_raw_stg"
+          createTableMode: "APPEND"
+          primaryKeys:
+          cleanStagedFiles: "Yes"
+          stagePlatform: "SNOWFLAKE"
+          trimStringColumns: "No"
+          stringNullIsNull: "No"
+          snowflake#internalStageType: "USER"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Bronze -> Silver:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "Silver -> Gold"
+      parameters:
+        componentName: "Bronze -> Silver"
+        transformationJob: "SCD Type 1/clean_customers.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Silver -> Gold:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "End Success"
+        failure:
+        - "End Failure"
+      parameters:
+        componentName: "Silver -> Gold"
+        transformationJob: "SCD Type 1/scd1_customers.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    End Success:
+      type: "end-success"
+      parameters:
+        componentName: "End Success"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    End Failure:
+      type: "end-failure"
+      parameters:
+        componentName: "End Failure"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Incremental Load:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "Bronze -> Silver"
+      parameters:
+        componentName: "Incremental Load"
+        transformationJob: "SCD Type 1/incremental_load.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Start:
+      position:
+        x: -180
+        "y": 0
+      tempMetlId: 1
+    Data Source:
+      position:
+        x: -70
+        "y": 0
+      tempMetlId: 2
+    Bronze -> Silver:
+      position:
+        x: 220
+        "y": 0
+      tempMetlId: 3
+    Silver -> Gold:
+      position:
+        x: 340
+        "y": 0
+      tempMetlId: 4
+    End Success:
+      position:
+        x: 460
+        "y": -80
+      tempMetlId: 5
+    End Failure:
+      position:
+        x: 460
+        "y": 80
+      tempMetlId: 6
+    Incremental Load:
+      position:
+        x: 70
+        "y": 0
+      tempMetlId: 7

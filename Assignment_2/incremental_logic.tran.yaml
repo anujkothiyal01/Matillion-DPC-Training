@@ -1,0 +1,115 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Aggregate:
+      type: "aggregate"
+      sources:
+      - "Bronze (orders_raw)"
+      parameters:
+        componentName: "Aggregate"
+        groupings:
+        aggregations:
+        - - "o_orderdate"
+          - "Max"
+        groupingType: "Group By"
+    Bronze (orders_raw_stg):
+      type: "table-input"
+      parameters:
+        componentName: "Bronze (orders_raw_stg)"
+        database: "Incremental_Load"
+        schema: "bronze"
+        targetTable: "orders_raw_stg"
+        columnNames:
+        - "o_id"
+        - "o_category"
+        - "o_orderdate"
+        timeOffset:
+    Join:
+      type: "join"
+      sources:
+      - "Aggregate"
+      - "Bronze (orders_raw_stg)"
+      parameters:
+        componentName: "Join"
+        mainTable: "Bronze (orders_raw_stg)"
+        mainTableAlias: "stg"
+        joins:
+        - - "Aggregate"
+          - "agg"
+          - "Inner"
+        joinExpressions:
+        - - "\"agg\".\"max_o_orderdate\" IS NULL OR \"stg\".\"o_orderdate\" > \"agg\"\
+            .\"max_o_orderdate\""
+          - "stg_Inner_agg"
+        columnMappings:
+        - - "stg.o_id"
+          - "o_id"
+        - - "stg.o_category"
+          - "o_category"
+        - - "stg.o_orderdate"
+          - "o_orderdate"
+    Bronze (orders_raw):
+      type: "table-input"
+      parameters:
+        componentName: "Bronze (orders_raw)"
+        database: "Incremental_Load"
+        schema: "bronze"
+        targetTable: "orders_raw"
+        columnNames:
+        - "o_id"
+        - "o_category"
+        - "o_orderdate"
+        timeOffset:
+    Table Output:
+      type: "table-output"
+      sources:
+      - "Join"
+      parameters:
+        componentName: "Table Output"
+        warehouse: "[Environment Default]"
+        database: "Incremental_Load"
+        schema: "bronze"
+        targetTable: "orders_raw"
+        fixDataTypeMismatches: "No"
+        columnMapping:
+        - - "o_id"
+          - "o_id"
+        - - "o_category"
+          - "o_category"
+        - - "o_orderdate"
+          - "o_orderdate"
+        orderBy:
+        - - "o_id"
+          - "Ascending"
+        outputMode: "Append"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Aggregate:
+      position:
+        x: 40
+        "y": -100
+      tempMetlId: 4
+    Bronze (orders_raw_stg):
+      position:
+        x: -100
+        "y": 40
+      tempMetlId: 6
+    Join:
+      position:
+        x: 220
+        "y": -50
+      tempMetlId: 7
+    Bronze (orders_raw):
+      position:
+        x: -100
+        "y": -100
+      tempMetlId: 9
+    Table Output:
+      position:
+        x: 380
+        "y": -50
+      tempMetlId: 10

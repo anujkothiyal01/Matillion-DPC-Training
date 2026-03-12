@@ -1,0 +1,191 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Silver (customers_clean):
+      type: "table-input"
+      parameters:
+        componentName: "Silver (customers_clean)"
+        database: "SCD_TYPE_1"
+        schema: "silver"
+        targetTable: "customers_clean"
+        columnNames:
+        - "c_id"
+        - "name"
+        - "email"
+        - "city"
+        - "updated_at"
+        timeOffset:
+    Detect Changes:
+      type: "detect-changes"
+      sources:
+      - "Silver (customers_clean)"
+      - "Gold (dim_customers)"
+      parameters:
+        componentName: "Detect Changes"
+        masterTable: "Gold (dim_customers)"
+        matchKeys:
+        - "c_id"
+        compareColumns:
+        - "name"
+        - "email"
+        - "city"
+        - "updated_at"
+        outputColumnMapping:
+        - - "compare_name"
+          - "name"
+        - - "compare_email"
+          - "email"
+        - - "compare_city"
+          - "city"
+        - - "compare_updated_at"
+          - "updated_at"
+        indicatorColumn: "Indicator"
+    Gold (dim_customers):
+      type: "table-input"
+      parameters:
+        componentName: "Gold (dim_customers)"
+        database: "SCD_TYPE_1"
+        schema: "gold"
+        targetTable: "dim_customers"
+        columnNames:
+        - "c_id"
+        - "name"
+        - "email"
+        - "city"
+        - "updated_at"
+        timeOffset:
+    Gold Update (dim_customers):
+      type: "table-update"
+      sources:
+      - "C (Change Indicator)"
+      parameters:
+        componentName: "Gold Update (dim_customers)"
+        warehouse: "[Environment Default]"
+        database: "SCD_TYPE_1"
+        schema: "gold"
+        targetTable: "dim_customers"
+        targetAlias: "target"
+        sourceAlias: "input"
+        joinExpression:
+        - - "\"target\".\"c_id\" = \"input\".\"c_id\""
+          - "Case"
+        whenMatched:
+        - - "\"input\".\"Indicator\" = 'C'"
+          - "Update"
+        updateMapping:
+        - - "name"
+          - "name"
+        - - "email"
+          - "email"
+        - - "city"
+          - "city"
+        - - "updated_at"
+          - "updated_at"
+        includeNotMatched: "No"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    N (New Indicator):
+      type: "filter"
+      sources:
+      - "Detect Changes"
+      parameters:
+        componentName: "N (New Indicator)"
+        mode: "Basic"
+        filterConditions:
+        - - "Indicator"
+          - "Is"
+          - "Equal to"
+          - "N"
+        combineCondition: "And"
+    C (Change Indicator):
+      type: "filter"
+      sources:
+      - "Detect Changes"
+      parameters:
+        componentName: "C (Change Indicator)"
+        mode: "Basic"
+        filterConditions:
+        - - "Indicator"
+          - "Is"
+          - "Equal to"
+          - "C"
+        combineCondition: "And"
+    Gold New (dim_customers) 3:
+      type: "table-update"
+      sources:
+      - "N (New Indicator)"
+      parameters:
+        componentName: "Gold New (dim_customers) 3"
+        warehouse: "[Environment Default]"
+        database: "SCD_TYPE_1"
+        schema: "gold"
+        targetTable: "dim_customers"
+        targetAlias: "target"
+        sourceAlias: "input"
+        joinExpression:
+        - - "\"target\".\"c_id\" = \"input\".\"c_id\""
+          - "Case"
+        whenMatched:
+        updateMapping:
+        - - "name"
+          - "name"
+        - - "email"
+          - "email"
+        - - "city"
+          - "city"
+        - - "updated_at"
+          - "updated_at"
+        includeNotMatched: "Yes"
+        insertMapping:
+        - - "c_id"
+          - "c_id"
+        - - "name"
+          - "name"
+        - - "email"
+          - "email"
+        - - "city"
+          - "city"
+        - - "updated_at"
+          - "updated_at"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Silver (customers_clean):
+      position:
+        x: 0
+        "y": 0
+      tempMetlId: 1
+    Detect Changes:
+      position:
+        x: 210
+        "y": 60
+      tempMetlId: 2
+    Gold (dim_customers):
+      position:
+        x: 0
+        "y": 130
+      tempMetlId: 3
+    Gold Update (dim_customers):
+      position:
+        x: 580
+        "y": 180
+      tempMetlId: 4
+    N (New Indicator):
+      position:
+        x: 390
+        "y": 60
+      tempMetlId: 6
+    C (Change Indicator):
+      position:
+        x: 390
+        "y": 180
+      tempMetlId: 7
+    Gold New (dim_customers) 3:
+      position:
+        x: 580
+        "y": 60
+      tempMetlId: 9

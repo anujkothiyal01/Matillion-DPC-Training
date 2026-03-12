@@ -6,98 +6,52 @@ pipeline:
       type: "start"
       transitions:
         unconditional:
-        - "Create Table"
+        - "Data Source (Google Sheets)"
       parameters:
         componentName: "Start"
-    Create Table:
-      type: "create-table-v2"
-      transitions:
-        success:
-        - "Last Updated Date"
-      parameters:
-        componentName: "Create Table"
-        createMethod: "Create If Not Exists"
-        database: "[Environment Default]"
-        schema: "[Environment Default]"
-        table: "land_orders"
-        snowflakeTableType: "Permanent"
-        columns:
-        - - "o_id"
-          - "NUMBER"
-          - ""
-          - ""
-          - ""
-          - "No"
-          - "No"
-          - ""
-          - ""
-        - - "o_amount"
-          - "NUMBER"
-          - ""
-          - ""
-          - ""
-          - "No"
-          - "No"
-          - ""
-          - ""
-        - - "o_orderdate"
-          - "DATE"
-          - ""
-          - ""
-          - ""
-          - "No"
-          - "No"
-          - ""
-          - ""
-        defaultDdlCollation:
-        primaryKeys:
-        clusteringKeys:
-        dataRetentionTimeInDays:
-        comment:
-      postProcessing:
-        updateOutputMessage:
-        updateScalarVariables:
-    Filter Last Loaded Date:
+    Incremental Load:
       type: "run-transformation"
-      transitions:
-        success:
-        - "Full Load (land_orders)"
       parameters:
-        componentName: "Filter Last Loaded Date"
-        transformationJob: "Assignment_2/last_loaded_date.tran.yaml"
+        componentName: "Incremental Load"
+        transformationJob: "Assignment_2/incremental_logic.tran.yaml"
         setScalarVariables:
         setGridVariables:
       postProcessing:
         updateOutputMessage:
         updateScalarVariables:
-    Incremental Load (stage_orders):
+    Data Source (Google Sheets):
       type: "modular-google-sheets-input-v0"
       transitions:
         success:
-        - "End Success"
-        failure:
-        - "End Failure"
+        - "Incremental Load"
       parameters:
-        componentName: "Incremental Load (stage_orders)"
+        componentName: "Data Source (Google Sheets)"
         componentId: "modular-google-sheets-input-v0"
         inputId: "google-sheets-input-v0"
         google-sheets-input-v0:
           connection:
             authType: "OAUTH_USER_TOKENS"
-            secretReferenceId: "dbt_auth_google"
+            secretReferenceId: "dpc-auth-google"
           connectionOptions:
-          spreadsheetName: "orders - 1Y0OMre1rBdS6fYHze_7QEA3kns8sS8Kl5EqZpIsvfTM"
+          spreadsheetName: "orders_incremental - 1d5vbkKo21TLMn_AniyUeudrDD3J9MdXNj1-J0ayyGeA"
           containsHeaderRow: "Yes"
-          mode: "ADVANCED"
+          mode: "BASIC"
+          cellRange:
+          dataSource: "orders_incremental_Sheet1"
+          dataSelection:
+          - "o_id"
+          - "o_category"
+          - "o_orderdate"
+          dataSourceFilter:
+          combineFilters: "AND"
+          limit:
           autoDebug: "No"
-          sqlQuery: "SELECT o_id, o_amount, o_orderdate\r\nFROM orders_Sheet1\r\n\
-            WHERE o_orderdate > CAST('${last_loaded_date}' AS DATE)"
         outputId: "snowflake-output-connector-v0"
         snowflake-output-connector-v0:
           warehouse: "[Environment Default]"
-          database: "[Environment Default]"
-          schema: "[Environment Default]"
-          tableName: "stage_orders"
+          database: "Incremental_Load"
+          schema: "bronze"
+          tableName: "orders_raw_stg"
           createTableMode: "APPEND"
           primaryKeys:
           cleanStagedFiles: "Yes"
@@ -108,108 +62,6 @@ pipeline:
       postProcessing:
         updateOutputMessage:
         updateScalarVariables:
-    Full Load (land_orders):
-      type: "modular-google-sheets-input-v0"
-      transitions:
-        success:
-        - "Query Result To Scalar"
-      parameters:
-        componentName: "Full Load (land_orders)"
-        componentId: "modular-google-sheets-input-v0"
-        inputId: "google-sheets-input-v0"
-        google-sheets-input-v0:
-          connection:
-            authType: "OAUTH_USER_TOKENS"
-            secretReferenceId: "dbt_auth_google"
-          connectionOptions:
-          spreadsheetName: "orders - 1Y0OMre1rBdS6fYHze_7QEA3kns8sS8Kl5EqZpIsvfTM"
-          containsHeaderRow: "Yes"
-          mode: "BASIC"
-          cellRange:
-          dataSource: "orders_Sheet1"
-          dataSelection:
-          - "o_id"
-          - "o_amount"
-          - "o_orderdate"
-          dataSourceFilter:
-          combineFilters: "AND"
-          limit:
-          autoDebug: "No"
-        outputId: "snowflake-output-connector-v0"
-        snowflake-output-connector-v0:
-          warehouse: "[Environment Default]"
-          database: "[Environment Default]"
-          schema: "[Environment Default]"
-          tableName: "land_orders"
-          createTableMode: "REPLACE_IF_EXISTS"
-          primaryKeys:
-          cleanStagedFiles: "Yes"
-          stagePlatform: "SNOWFLAKE"
-          trimStringColumns: "No"
-          stringNullIsNull: "No"
-          snowflake#internalStageType: "USER"
-      postProcessing:
-        updateOutputMessage:
-        updateScalarVariables:
-    Last Updated Date:
-      type: "create-table-v2"
-      transitions:
-        success:
-        - "Filter Last Loaded Date"
-      parameters:
-        componentName: "Last Updated Date"
-        createMethod: "Replace"
-        database: "[Environment Default]"
-        schema: "[Environment Default]"
-        table: "temp_max_date"
-        snowflakeTableType: "Permanent"
-        columns:
-        - - "max_date"
-          - "DATE"
-          - ""
-          - ""
-          - ""
-          - "No"
-          - "No"
-          - ""
-          - ""
-        defaultDdlCollation:
-        primaryKeys:
-        clusteringKeys:
-        dataRetentionTimeInDays:
-        comment:
-      postProcessing:
-        updateOutputMessage:
-        updateScalarVariables:
-    Query Result To Scalar:
-      type: "query-to-scalar"
-      transitions:
-        success:
-        - "Incremental Load (stage_orders)"
-      parameters:
-        componentName: "Query Result To Scalar"
-        mode: "Advanced"
-        query: "SELECT \"max_date\" FROM \"MATILLION_DPC\".\"PUBLIC\".\"temp_max_date\""
-        scalarVariableMapping:
-        - - "last_loaded_date"
-          - "max_date"
-      postProcessing:
-        updateOutputMessage:
-        updateScalarVariables:
-    End Success:
-      type: "end-success"
-      parameters:
-        componentName: "End Success"
-      postProcessing:
-        updateOutputMessage:
-        updateScalarVariables:
-    End Failure:
-      type: "end-failure"
-      parameters:
-        componentName: "End Failure"
-      postProcessing:
-        updateOutputMessage:
-        updateScalarVariables:
 design:
   components:
     Start:
@@ -217,43 +69,13 @@ design:
         x: 0
         "y": 0
       tempMetlId: 1
-    Create Table:
+    Incremental Load:
       position:
-        x: 110
-        "y": 0
-      tempMetlId: 4
-    Filter Last Loaded Date:
-      position:
-        x: 390
+        x: 270
         "y": 0
       tempMetlId: 3
-    Incremental Load (stage_orders):
+    Data Source (Google Sheets):
       position:
-        x: 850
+        x: 120
         "y": 0
-      tempMetlId: 2
-    Full Load (land_orders):
-      position:
-        x: 540
-        "y": 0
-      tempMetlId: 5
-    Last Updated Date:
-      position:
-        x: 240
-        "y": 0
-      tempMetlId: 6
-    Query Result To Scalar:
-      position:
-        x: 700
-        "y": 0
-      tempMetlId: 9
-    End Success:
-      position:
-        x: 1000
-        "y": -70
-      tempMetlId: 10
-    End Failure:
-      position:
-        x: 1000
-        "y": 40
-      tempMetlId: 11
+      tempMetlId: 4

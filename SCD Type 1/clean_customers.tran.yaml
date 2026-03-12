@@ -1,0 +1,77 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Bronze (customers_raw):
+      type: "table-input"
+      parameters:
+        componentName: "Bronze (customers_raw)"
+        database: "SCD_TYPE_1"
+        schema: "bronze"
+        targetTable: "customers_raw"
+        columnNames:
+        - "c_id"
+        - "name"
+        - "email"
+        - "city"
+        - "updated_at"
+        timeOffset:
+    Table Output:
+      type: "table-output"
+      sources:
+      - "SQL"
+      parameters:
+        componentName: "Table Output"
+        warehouse: "[Environment Default]"
+        database: "SCD_TYPE_1"
+        schema: "silver"
+        targetTable: "customers_clean"
+        fixDataTypeMismatches: "No"
+        columnMapping:
+        - - "c_id"
+          - "c_id"
+        - - "name"
+          - "name"
+        - - "email"
+          - "email"
+        - - "city"
+          - "city"
+        - - "updated_at"
+          - "updated_at"
+        orderBy:
+        - - "c_id"
+          - "Ascending"
+        outputMode: "Truncate"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    SQL:
+      type: "sql"
+      sources:
+      - "Bronze (customers_raw)"
+      parameters:
+        componentName: "SQL"
+        query: "-- For each c_id:\r\n-- sorts rows by latest updated_at\r\n-- gives\
+          \ row number 1 to the newest row\r\n-- keeps only that row\r\n\r\nSELECT\
+          \ \"c_id\", \"name\", \"email\", \"city\", \"updated_at\" FROM (\r\n   \
+          \ SELECT \"c_id\", \"name\", \"email\", \"city\", \"updated_at\", ROW_NUMBER()\
+          \ OVER(\r\n        PARTITION BY \"c_id\"\r\n        ORDER BY \"updated_at\"\
+          \ DESC\r\n    ) AS rn\r\n    FROM \"SCD_TYPE_1\".\"bronze\".\"customers_raw\"\
+          \r\n)\r\nWHERE rn = 1"
+design:
+  components:
+    Bronze (customers_raw):
+      position:
+        x: 0
+        "y": 120
+      tempMetlId: 1
+    Table Output:
+      position:
+        x: 290
+        "y": 120
+      tempMetlId: 4
+    SQL:
+      position:
+        x: 150
+        "y": 120
+      tempMetlId: 5
