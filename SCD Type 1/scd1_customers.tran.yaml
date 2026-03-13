@@ -171,21 +171,21 @@ design:
       tempMetlId: 3
     Gold Update (dim_customers):
       position:
-        x: 580
+        x: 630
         "y": 180
       tempMetlId: 4
     N (New Indicator):
       position:
-        x: 390
+        x: 450
         "y": 60
       tempMetlId: 6
     C (Change Indicator):
       position:
-        x: 390
+        x: 450
         "y": 180
       tempMetlId: 7
     Gold New (dim_customers) 3:
       position:
-        x: 580
+        x: 630
         "y": 60
       tempMetlId: 9

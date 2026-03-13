@@ -71,9 +71,9 @@ pipeline:
       type: "run-transformation"
       transitions:
         success:
-        - "End Success"
+        - "Success Alert"
         failure:
-        - "End Failure"
+        - "Failure Alert"
       parameters:
         componentName: "Silver -> Gold"
         transformationJob: "SCD Type 1/scd1_customers.tran.yaml"
@@ -109,6 +109,56 @@ pipeline:
       postProcessing:
         updateOutputMessage:
         updateScalarVariables:
+    Success Alert:
+      type: "send-email-v2"
+      transitions:
+        success:
+        - "End Success"
+      parameters:
+        componentName: "Success Alert"
+        toRecipients:
+        - "anujkothiyal01@gmail.com"
+        ccRecipients:
+        - "anujk@cloudeqs.com"
+        subject: "Pipeline Success ✅"
+        message: "Last run is successful ✅"
+        senderAddress: "anujkothiyal02@gmail.com"
+        replyAddress:
+        smtpUsername: "anujkothiyal02@gmail.com"
+        smtpPassword: "gmail-app-pass"
+        smtpHostname: "smtp.gmail.com"
+        smtpPort: "587"
+        enableSslTls: "No"
+        enableStartTls: "Yes"
+        s3Location: "s3://"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Failure Alert:
+      type: "send-email-v2"
+      transitions:
+        unconditional:
+        - "End Failure"
+      parameters:
+        componentName: "Failure Alert"
+        toRecipients:
+        - "anujkothiyal01@gmail.com"
+        ccRecipients:
+        - "anujk@cloudeqs.com"
+        subject: "Pipeline Success ❌"
+        message: "Last run is unsuccessful ❌"
+        senderAddress: "anujkothiyal02@gmail.com"
+        replyAddress:
+        smtpUsername: "anujkothiyal02@gmail.com"
+        smtpPassword: "gmail-app-pass"
+        smtpHostname: "smtp.gmail.com"
+        smtpPort: "587"
+        enableSslTls: "No"
+        enableStartTls: "Yes"
+        s3Location: "s3://"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
 design:
   components:
     Start:
@@ -133,16 +183,26 @@ design:
       tempMetlId: 4
     End Success:
       position:
-        x: 460
-        "y": -80
+        x: 590
+        "y": -70
       tempMetlId: 5
     End Failure:
       position:
-        x: 460
-        "y": 80
+        x: 590
+        "y": 70
       tempMetlId: 6
     Incremental Load:
       position:
         x: 70
         "y": 0
       tempMetlId: 7
+    Success Alert:
+      position:
+        x: 480
+        "y": -70
+      tempMetlId: 8
+    Failure Alert:
+      position:
+        x: 480
+        "y": 70
+      tempMetlId: 9
