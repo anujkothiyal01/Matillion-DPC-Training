@@ -1,0 +1,127 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Bronze (customers_raw):
+      type: "table-input"
+      parameters:
+        componentName: "Bronze (customers_raw)"
+        database: "SCD_TYPE_2"
+        schema: "bronze"
+        targetTable: "customers_raw_stg"
+        columnNames:
+        - "c_id"
+        - "name"
+        - "email"
+        - "city"
+        - "updated_at"
+        timeOffset:
+    Bronze (customers_raw_stg):
+      type: "table-input"
+      parameters:
+        componentName: "Bronze (customers_raw_stg)"
+        database: "SCD_TYPE_2"
+        schema: "bronze"
+        targetTable: "customers_raw_stg"
+        columnNames:
+        - "c_id"
+        - "name"
+        - "email"
+        - "city"
+        - "updated_at"
+        timeOffset:
+    Aggregate:
+      type: "aggregate"
+      sources:
+      - "Bronze (customers_raw)"
+      parameters:
+        componentName: "Aggregate"
+        groupings:
+        aggregations:
+        - - "updated_at"
+          - "Max"
+        groupingType: "Group By"
+    Join:
+      type: "join"
+      sources:
+      - "Aggregate"
+      - "Bronze (customers_raw_stg)"
+      parameters:
+        componentName: "Join"
+        mainTable: "Bronze (customers_raw_stg)"
+        mainTableAlias: "stg"
+        joins:
+        - - "Aggregate"
+          - "agg"
+          - "Inner"
+        joinExpressions:
+        - - "\"agg\".\"max_updated_at\" IS NULL OR \"stg\".\"updated_at\" > \"agg\"\
+            .\"max_updated_at\""
+          - "stg_Inner_agg"
+        columnMappings:
+        - - "stg.c_id"
+          - "c_id"
+        - - "stg.name"
+          - "name"
+        - - "stg.email"
+          - "email"
+        - - "stg.city"
+          - "city"
+        - - "stg.updated_at"
+          - "updated_at"
+    Table Output:
+      type: "table-output"
+      sources:
+      - "Join"
+      parameters:
+        componentName: "Table Output"
+        warehouse: "[Environment Default]"
+        database: "SCD_TYPE_2"
+        schema: "bronze"
+        targetTable: "customers_raw"
+        fixDataTypeMismatches: "No"
+        columnMapping:
+        - - "c_id"
+          - "c_id"
+        - - "name"
+          - "name"
+        - - "email"
+          - "email"
+        - - "city"
+          - "city"
+        - - "updated_at"
+          - "updated_at"
+        orderBy:
+        - - "c_id"
+          - "Ascending"
+        outputMode: "Append"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Bronze (customers_raw):
+      position:
+        x: -390
+        "y": -80
+      tempMetlId: 1
+    Bronze (customers_raw_stg):
+      position:
+        x: -390
+        "y": 80
+      tempMetlId: 2
+    Aggregate:
+      position:
+        x: -230
+        "y": -80
+      tempMetlId: 3
+    Join:
+      position:
+        x: -70
+        "y": -80
+      tempMetlId: 4
+    Table Output:
+      position:
+        x: 90
+        "y": -80
+      tempMetlId: 5

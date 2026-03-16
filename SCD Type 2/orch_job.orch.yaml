@@ -4,12 +4,249 @@ pipeline:
   components:
     Start:
       type: "start"
+      transitions:
+        unconditional:
+        - "Data Source"
       parameters:
         componentName: "Start"
+    Data Source:
+      type: "modular-google-sheets-input-v0"
+      transitions:
+        success:
+        - "Incremental Load"
+      parameters:
+        componentName: "Data Source"
+        componentId: "modular-google-sheets-input-v0"
+        inputId: "google-sheets-input-v0"
+        google-sheets-input-v0:
+          connection:
+            authType: "OAUTH_USER_TOKENS"
+            secretReferenceId: "dpc-auth-google"
+          connectionOptions:
+          spreadsheetName: "SCD Type 2 - 1mrEphW-GMQG58M1ayw2RZ6ndm6nJgSf_7L1bYeXKxck"
+          containsHeaderRow: "Yes"
+          mode: "BASIC"
+          cellRange:
+          dataSource: "SCD Type 2_Sheet1"
+          dataSelection:
+          - "c_id"
+          - "name"
+          - "email"
+          - "city"
+          - "updated_at"
+          dataSourceFilter:
+          combineFilters: "AND"
+          limit:
+          autoDebug: "No"
+        outputId: "snowflake-output-connector-v0"
+        snowflake-output-connector-v0:
+          warehouse: "[Environment Default]"
+          database: "SCD_TYPE_2"
+          schema: "bronze"
+          tableName: "customers_raw_stg"
+          createTableMode: "REPLACE_IF_EXISTS"
+          primaryKeys:
+          cleanStagedFiles: "Yes"
+          stagePlatform: "SNOWFLAKE"
+          trimStringColumns: "No"
+          stringNullIsNull: "No"
+          snowflake#internalStageType: "USER"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Bronze -> Silver:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "Silver -> Gold"
+      parameters:
+        componentName: "Bronze -> Silver"
+        transformationJob: "SCD Type 2/clean_customers.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    End Success:
+      type: "end-success"
+      parameters:
+        componentName: "End Success"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    End Failure:
+      type: "end-failure"
+      parameters:
+        componentName: "End Failure"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Incremental Load:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "Bronze -> Silver"
+      parameters:
+        componentName: "Incremental Load"
+        transformationJob: "SCD Type 2/incremental_load.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Success Alert:
+      type: "send-email-v2"
+      transitions:
+        success:
+        - "End Success"
+      parameters:
+        componentName: "Success Alert"
+        toRecipients:
+        - "anujkothiyal01@gmail.com"
+        ccRecipients:
+        subject: "Pipeline Success ✅"
+        message: "Last run is successful ✅"
+        senderAddress: "anujkothiyal02@gmail.com"
+        replyAddress:
+        smtpUsername: "anujkothiyal02@gmail.com"
+        smtpPassword: "gmail-app-pass"
+        smtpHostname: "smtp.gmail.com"
+        smtpPort: "587"
+        enableSslTls: "No"
+        enableStartTls: "Yes"
+        s3Location: "s3://"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Failure Alert:
+      type: "send-email-v2"
+      transitions:
+        unconditional:
+        - "End Failure"
+      parameters:
+        componentName: "Failure Alert"
+        toRecipients:
+        - "anujkothiyal01@gmail.com"
+        ccRecipients:
+        subject: "Pipeline Success ❌"
+        message: "Last run is unsuccessful ❌"
+        senderAddress: "anujkothiyal02@gmail.com"
+        replyAddress:
+        smtpUsername: "anujkothiyal02@gmail.com"
+        smtpPassword: "gmail-app-pass"
+        smtpHostname: "smtp.gmail.com"
+        smtpPort: "587"
+        enableSslTls: "No"
+        enableStartTls: "Yes"
+        s3Location: "s3://"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    Silver -> Gold:
+      type: "sql-executor"
+      transitions:
+        success:
+        - "Success Alert"
+        failure:
+        - "Failure Alert"
+      parameters:
+        componentName: "Silver -> Gold"
+        scriptLocation: "Component"
+        declareSqlVariables: "Include selected"
+        variablesToInclude:
+        enableVariableResolution: "No"
+        sqlScript: "-- 1) Insert new customers\r\nINSERT INTO \"SCD_TYPE_2\".\"gold\"\
+          .\"dim_customers\"\r\n(\r\n    \"customer_sk\",\r\n    \"c_id\",\r\n   \
+          \ \"name\",\r\n    \"email\",\r\n    \"city\",\r\n    \"effective_from\"\
+          ,\r\n    \"effective_to\",\r\n    \"is_current\",\r\n    \"is_deleted\"\r\
+          \n)\r\nSELECT\r\n    \"SCD_TYPE_2\".\"gold\".\"seq_customer_sk\".NEXTVAL,\r\
+          \n    s.\"c_id\",\r\n    s.\"name\",\r\n    s.\"email\",\r\n    s.\"city\"\
+          ,\r\n    CURRENT_TIMESTAMP(),\r\n    TO_TIMESTAMP('9999-12-31 23:59:59'),\r\
+          \n    TRUE,\r\n    FALSE\r\nFROM \"SCD_TYPE_2\".\"silver\".\"customers_clean\"\
+          \ s\r\nLEFT JOIN \"SCD_TYPE_2\".\"gold\".\"dim_customers\" g\r\n    ON s.\"\
+          c_id\" = g.\"c_id\"\r\n   AND g.\"is_current\" = TRUE\r\nWHERE g.\"c_id\"\
+          \ IS NULL;\r\n\r\n\r\n-- 2) Expire changed current rows\r\nUPDATE \"SCD_TYPE_2\"\
+          .\"gold\".\"dim_customers\" g\r\nSET\r\n    \"effective_to\" = CURRENT_TIMESTAMP(),\r\
+          \n    \"is_current\" = FALSE\r\nFROM \"SCD_TYPE_2\".\"silver\".\"customers_clean\"\
+          \ s\r\nWHERE g.\"c_id\" = s.\"c_id\"\r\n  AND g.\"is_current\" = TRUE\r\n\
+          \  AND g.\"is_deleted\" = FALSE\r\n  AND (\r\n        COALESCE(g.\"email\"\
+          ,'') <> COALESCE(s.\"email\",'')\r\n     OR COALESCE(g.\"city\",'')  <>\
+          \ COALESCE(s.\"city\",'')\r\n  );\r\n\r\n\r\n-- 3) Insert changed new versions\r\
+          \nINSERT INTO \"SCD_TYPE_2\".\"gold\".\"dim_customers\"\r\n(\r\n    \"customer_sk\"\
+          ,\r\n    \"c_id\",\r\n    \"name\",\r\n    \"email\",\r\n    \"city\",\r\
+          \n    \"effective_from\",\r\n    \"effective_to\",\r\n    \"is_current\"\
+          ,\r\n    \"is_deleted\"\r\n)\r\nSELECT\r\n    \"SCD_TYPE_2\".\"gold\".\"\
+          seq_customer_sk\".NEXTVAL,\r\n    s.\"c_id\",\r\n    s.\"name\",\r\n   \
+          \ s.\"email\",\r\n    s.\"city\",\r\n    CURRENT_TIMESTAMP(),\r\n    TO_TIMESTAMP('9999-12-31\
+          \ 23:59:59'),\r\n    TRUE,\r\n    FALSE\r\nFROM \"SCD_TYPE_2\".\"silver\"\
+          .\"customers_clean\" s\r\nJOIN (\r\n    SELECT \"c_id\"\r\n    FROM \"SCD_TYPE_2\"\
+          .\"gold\".\"dim_customers\"\r\n    WHERE \"is_current\" = FALSE\r\n    \
+          \  AND \"effective_to\" >= DATEADD(second, -10, CURRENT_TIMESTAMP())\r\n\
+          ) x\r\n    ON s.\"c_id\" = x.\"c_id\";\r\n\r\n\r\n-- 4) Expire deleted current\
+          \ rows\r\nUPDATE \"SCD_TYPE_2\".\"gold\".\"dim_customers\" g\r\nSET\r\n\
+          \    \"effective_to\" = CURRENT_TIMESTAMP(),\r\n    \"is_current\" = FALSE\r\
+          \nWHERE g.\"is_current\" = TRUE\r\n  AND g.\"is_deleted\" = FALSE\r\n  AND\
+          \ NOT EXISTS (\r\n      SELECT 1\r\n      FROM \"SCD_TYPE_2\".\"silver\"\
+          .\"customers_clean\" s\r\n      WHERE s.\"c_id\" = g.\"c_id\"\r\n  );\r\n\
+          \r\n\r\n-- 5) Insert deleted versions\r\nINSERT INTO \"SCD_TYPE_2\".\"gold\"\
+          .\"dim_customers\"\r\n(\r\n    \"customer_sk\",\r\n    \"c_id\",\r\n   \
+          \ \"name\",\r\n    \"email\",\r\n    \"city\",\r\n    \"effective_from\"\
+          ,\r\n    \"effective_to\",\r\n    \"is_current\",\r\n    \"is_deleted\"\r\
+          \n)\r\nSELECT\r\n    \"SCD_TYPE_2\".\"gold\".\"seq_customer_sk\".NEXTVAL,\r\
+          \n    g.\"c_id\",\r\n    g.\"name\",\r\n    g.\"email\",\r\n    g.\"city\"\
+          ,\r\n    CURRENT_TIMESTAMP(),\r\n    TO_TIMESTAMP('9999-12-31 23:59:59'),\r\
+          \n    TRUE,\r\n    TRUE\r\nFROM \"SCD_TYPE_2\".\"gold\".\"dim_customers\"\
+          \ g\r\nWHERE g.\"is_current\" = FALSE\r\n  AND g.\"is_deleted\" = FALSE\r\
+          \n  AND g.\"effective_to\" >= DATEADD(second, -10, CURRENT_TIMESTAMP())\r\
+          \n  AND NOT EXISTS (\r\n      SELECT 1\r\n      FROM \"SCD_TYPE_2\".\"silver\"\
+          .\"customers_clean\" s\r\n      WHERE s.\"c_id\" = g.\"c_id\"\r\n  );"
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
 design:
   components:
     Start:
       position:
-        x: 0
+        x: -180
         "y": 0
       tempMetlId: 1
+    Data Source:
+      position:
+        x: -70
+        "y": 0
+      tempMetlId: 2
+    Bronze -> Silver:
+      position:
+        x: 220
+        "y": 0
+      tempMetlId: 3
+    End Success:
+      position:
+        x: 590
+        "y": -70
+      tempMetlId: 5
+    End Failure:
+      position:
+        x: 590
+        "y": 70
+      tempMetlId: 6
+    Incremental Load:
+      position:
+        x: 70
+        "y": 0
+      tempMetlId: 7
+    Success Alert:
+      position:
+        x: 480
+        "y": -70
+      tempMetlId: 8
+    Failure Alert:
+      position:
+        x: 480
+        "y": 70
+      tempMetlId: 9
+    Silver -> Gold:
+      position:
+        x: 350
+        "y": 0
+      tempMetlId: 10

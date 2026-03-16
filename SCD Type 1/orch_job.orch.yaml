@@ -44,7 +44,7 @@ pipeline:
           database: "SCD_TYPE_1"
           schema: "bronze"
           tableName: "customers_raw_stg"
-          createTableMode: "APPEND"
+          createTableMode: "REPLACE_IF_EXISTS"
           primaryKeys:
           cleanStagedFiles: "Yes"
           stagePlatform: "SNOWFLAKE"
@@ -119,7 +119,6 @@ pipeline:
         toRecipients:
         - "anujkothiyal01@gmail.com"
         ccRecipients:
-        - "anujk@cloudeqs.com"
         subject: "Pipeline Success ✅"
         message: "Last run is successful ✅"
         senderAddress: "anujkothiyal02@gmail.com"
@@ -144,7 +143,6 @@ pipeline:
         toRecipients:
         - "anujkothiyal01@gmail.com"
         ccRecipients:
-        - "anujk@cloudeqs.com"
         subject: "Pipeline Success ❌"
         message: "Last run is unsuccessful ❌"
         senderAddress: "anujkothiyal02@gmail.com"

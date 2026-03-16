@@ -6,7 +6,7 @@ pipeline:
       type: "table-input"
       parameters:
         componentName: "Silver (customers_clean)"
-        database: "SCD_TYPE_1"
+        database: "SCD_TYPE_2"
         schema: "silver"
         targetTable: "customers_clean"
         columnNames:
@@ -20,17 +20,15 @@ pipeline:
       type: "detect-changes"
       sources:
       - "Silver (customers_clean)"
-      - "Gold (dim_customers)"
+      - "SQL (gold_current)"
       parameters:
         componentName: "Detect Changes"
-        masterTable: "Gold (dim_customers)"
+        masterTable: "SQL (gold_current)"
         matchKeys:
         - "c_id"
         compareColumns:
-        - "name"
         - "email"
         - "city"
-        - "updated_at"
         outputColumnMapping:
         - - "compare_name"
           - "name"
@@ -45,7 +43,7 @@ pipeline:
       type: "table-input"
       parameters:
         componentName: "Gold (dim_customers)"
-        database: "SCD_TYPE_1"
+        database: "SCD_TYPE_2"
         schema: "gold"
         targetTable: "dim_customers"
         columnNames:
@@ -62,7 +60,7 @@ pipeline:
       parameters:
         componentName: "Gold Update (dim_customers)"
         warehouse: "[Environment Default]"
-        database: "SCD_TYPE_1"
+        database: "SCD_TYPE_2"
         schema: "gold"
         targetTable: "dim_customers"
         targetAlias: "target"
@@ -119,7 +117,7 @@ pipeline:
       parameters:
         componentName: "Gold New (dim_customers)"
         warehouse: "[Environment Default]"
-        database: "SCD_TYPE_1"
+        database: "SCD_TYPE_2"
         schema: "gold"
         targetTable: "dim_customers"
         targetAlias: "target"
@@ -172,7 +170,7 @@ pipeline:
       parameters:
         componentName: "Gold Delete (dim_customers)"
         warehouse: "[Environment Default]"
-        database: "SCD_TYPE_1"
+        database: "SCD_TYPE_2"
         schema: "gold"
         targetTable: "dim_customers"
         targetAlias: "target"
@@ -205,6 +203,13 @@ pipeline:
       postProcessing:
         updateOutputMessage:
         updateScalarVariables:
+    SQL (gold_current):
+      type: "sql"
+      parameters:
+        componentName: "SQL (gold_current)"
+        query: "SELECT\r\n    \"c_id\",\r\n    \"name\",\r\n    \"email\",\r\n   \
+          \ \"city\"\r\nFROM \"SCD_TYPE_2\".\"gold\".\"dim_customers\"\r\nWHERE \"\
+          is_current\" = TRUE"
 design:
   components:
     Silver (customers_clean):
@@ -220,11 +225,11 @@ design:
     Gold (dim_customers):
       position:
         x: 0
-        "y": 130
+        "y": 350
       tempMetlId: 3
     Gold Update (dim_customers):
       position:
-        x: 630
+        x: 780
         "y": 180
       tempMetlId: 4
     N (New Indicator):
@@ -239,7 +244,7 @@ design:
       tempMetlId: 7
     Gold New (dim_customers):
       position:
-        x: 630
+        x: 780
         "y": 60
       tempMetlId: 9
     D (Delete Indicator):
@@ -249,6 +254,11 @@ design:
       tempMetlId: 10
     Gold Delete (dim_customers):
       position:
-        x: 630
+        x: 780
         "y": -70
       tempMetlId: 11
+    SQL (gold_current):
+      position:
+        x: -10
+        "y": 160
+      tempMetlId: 12
