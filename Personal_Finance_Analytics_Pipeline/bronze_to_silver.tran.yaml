@@ -1,0 +1,32 @@
+type: "transformation"
+version: "1.0"
+pipeline:
+  components:
+    Table Input:
+      type: "table-input"
+      parameters:
+        componentName: "Table Input"
+        database: "Personal_Finance_Analytics_Pipeline"
+        schema: "bronze"
+        targetTable: "transactions_raw"
+        columnNames:
+        - "txn_id"
+        - "txn_date"
+        - "updated_at"
+        - "txn_type"
+        - "amount"
+        - "category"
+        - "subcategory"
+        - "merchant"
+        - "payment_mode"
+        - "is_recurring"
+        - "record_status"
+        - "ingested_at"
+        timeOffset:
+design:
+  components:
+    Table Input:
+      position:
+        x: -100
+        "y": 0
+      tempMetlId: 1

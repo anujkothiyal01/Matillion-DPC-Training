@@ -1,0 +1,55 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Bronze -> Silver"
+      parameters:
+        componentName: "Start"
+    Bronze -> Silver:
+      type: "run-transformation"
+      transitions:
+        success:
+        - "dbt Core"
+      parameters:
+        componentName: "Bronze -> Silver"
+        transformationJob: "Personal_Finance_Analytics_Pipeline/bronze_to_silver.tran.yaml"
+        setScalarVariables:
+        setGridVariables:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+    dbt Core:
+      type: "commands-for-dbt-core-v2"
+      parameters:
+        componentName: "dbt Core"
+        dbtCoreVersion: "1.9"
+        dbtProjectLocation: "Current project"
+        dbtProject:
+        dbtCommand: "dbt run"
+        mapDbtEnvironmentVariables:
+        globalProfileConfig:
+        profileOutputsConfig:
+      postProcessing:
+        updateOutputMessage:
+        updateScalarVariables:
+design:
+  components:
+    Start:
+      position:
+        x: -540
+        "y": -60
+      tempMetlId: 1
+    Bronze -> Silver:
+      position:
+        x: -380
+        "y": -60
+      tempMetlId: 2
+    dbt Core:
+      position:
+        x: -220
+        "y": -60
+      tempMetlId: 3
